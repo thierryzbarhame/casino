@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Cassino</title>
+<style>
+  :root {
+    --felt-1: #0f4d3a;
+    --felt-2: #0a3527;
+    --bg: #111417;
+    --panel-bg: #1b2430;
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --text: #eef1f5;
+    --muted: #9aa3b2;
+    --accent: #f2c14e;
+    --accent-2: #6fb1ff;
+    --danger: #ff6b6b;
+    --good: #7bd88f;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+
+  body {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #app {
+    width: 100%;
+    height: 100%;
+    max-width: 980px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(6px, 1.6vh, 16px) clamp(8px, 2vw, 18px);
+    gap: clamp(4px, 1vh, 10px);
+  }
+
+  /* ---- top status bar ---- */
+
+  #topbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+    width: 100%;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(1rem, 2.6vh, 1.5rem);
+    letter-spacing: 3px;
+    font-weight: 700;
+    background: linear-gradient(180deg, #ffe08a, var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    white-space: nowrap;
+  }
+
+  #status-row {
+    display: flex;
+    gap: clamp(4px, 1vw, 10px);
+    justify-content: flex-end;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  @media (max-width: 620px) {
+    #topbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    #status-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      width: 100%;
+      min-width: 0;
+    }
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 4px clamp(4px, 1.4vw, 12px);
+    min-width: 0;
+    overflow: hidden;
+    line-height: 1.1;
+  }
+
+  .panel .label {
+    font-size: 0.58rem;
+    letter-spacing: 1px;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  .panel .value {
+    font-size: clamp(0.85rem, 2vh, 1.15rem);
+    font-weight: 700;
+    color: var(--accent-2);
+  }
+
+  .panel.you .value { color: var(--good); }
+  .panel.cpu .value { color: var(--danger); }
+
+  .panel .sub {
+    font-size: 0.56rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ---- turn banner ---- */
+
+  #turn-banner {
+    flex: 0 0 auto;
+    text-align: center;
+    font-size: clamp(0.75rem, 1.8vh, 0.95rem);
+    padding: 3px 10px;
+    border-radius: 8px;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    color: var(--muted);
+  }
+
+  #turn-banner.you-turn { color: var(--good); border-color: rgba(123, 216, 143, 0.4); }
+  #turn-banner.cpu-turn { color: var(--danger); border-color: rgba(255, 107, 107, 0.4); }
+
+  /* ---- hand / table zones ---- */
+
+  .zone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 0;
+  }
+
+  .zone-label {
+    font-size: 0.62rem;
+    letter-spacing: 1.5px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  #computer-zone { flex: 0 0 auto; }
+  #player-zone { flex: 0 0 auto; }
+
+  #table-zone {
+    flex: 1 1 auto;
+    min-height: 0;
+    background: radial-gradient(ellipse at center, var(--felt-1), var(--felt-2));
+    border-radius: 16px;
+    border: 4px solid #06201a;
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #table-cards {
+    flex: 1 1 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #table-empty-hint {
+    color: rgba(255,255,255,0.35);
+    font-size: 0.8rem;
+    font-style: italic;
+  }
+
+  .hand-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  /* ---- cards ---- */
+
+  .card {
+    width: clamp(40px, 8vw, 64px);
+    aspect-ratio: 5 / 7;
+    border-radius: 6px;
+    background: #fdfdfd;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    flex: 0 0 auto;
+  }
+
+  .card img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    border-radius: 5px;
+  }
+
+  .card.clickable {
+    cursor: pointer;
+  }
+
+  .card.clickable:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.55);
+  }
+
+  .card.selected {
+    transform: translateY(-12px);
+    box-shadow: 0 0 0 3px var(--accent), 0 10px 18px rgba(0,0,0,0.55);
+  }
+
+  .card.face-down {
+    background: repeating-linear-gradient(45deg, #7a1f2b, #7a1f2b 5px, #5c1520 5px, #5c1520 10px);
+    border: 2px solid var(--accent);
+  }
+
+  .fallback-face {
+    position: absolute;
+    inset: 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background: #fff;
+    font-family: Georgia, serif;
+    font-weight: 700;
+  }
+
+  .fallback-face.red { color: #c62828; }
+  .fallback-face.black { color: #1a1a1a; }
+
+  .fallback-face .corner {
+    position: absolute;
+    font-size: clamp(0.55rem, 1.6vw, 0.85rem);
+    line-height: 1.05;
+    text-align: center;
+  }
+
+  .fallback-face .corner.tl { top: 3px; left: 4px; }
+  .fallback-face .corner.br { bottom: 3px; right: 4px; transform: rotate(180deg); }
+
+  .fallback-face .pip {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(1.1rem, 3.6vw, 1.8rem);
+  }
+
+  /* ---- controls / message ---- */
+
+  #controls {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  #message {
+    font-size: clamp(0.75rem, 1.8vh, 0.9rem);
+    color: var(--muted);
+    text-align: center;
+    min-height: 1.4em;
+  }
+
+  #message.error { color: var(--danger); }
+  #message.good { color: var(--good); }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 999px;
+    padding: 8px 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+
+  #play-btn {
+    color: #0d1f12;
+    background: linear-gradient(180deg, #8be28b, #4caf50);
+    box-shadow: 0 6px 14px rgba(76, 195, 120, 0.35);
+  }
+
+  #play-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  #new-game-btn {
+    color: #2a1d05;
+    background: linear-gradient(180deg, #ffe08a, var(--accent));
+    box-shadow: 0 6px 14px rgba(242, 193, 78, 0.3);
+  }
+
+  /* ---- game over overlay ---- */
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(5, 6, 8, 0.82);
+    backdrop-filter: blur(3px);
+    z-index: 10;
+  }
+
+  #overlay.visible { display: flex; }
+
+  #overlay-card {
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 16px;
+    padding: 22px 28px;
+    text-align: center;
+    max-width: 92vw;
+  }
+
+  #overlay-card h2 {
+    margin: 0 0 6px;
+    font-size: clamp(1.2rem, 4vh, 1.7rem);
+    color: var(--accent);
+  }
+
+  #overlay-result {
+    font-size: clamp(1rem, 3vh, 1.2rem);
+    margin-bottom: 14px;
+  }
+
+  #overlay-details {
+    display: flex;
+    gap: 18px;
+    justify-content: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  #overlay-details .col {
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  #overlay-details .col b {
+    color: var(--text);
+  }
+</style>
+</head>
+<body>
+  <div id="app">
+    <div id="topbar">
+      <h1>CASSINO</h1>
+      <div id="status-row">
+        <div class="panel you">
+          <span class="label">YOU</span>
+          <span class="value" id="stat-you-score">0</span>
+          <span class="sub"><span id="stat-you-sweeps">0</span> sweeps</span>
+        </div>
+        <div class="panel cpu">
+          <span class="label">CPU</span>
+          <span class="value" id="stat-cpu-score">0</span>
+          <span class="sub"><span id="stat-cpu-sweeps">0</span> sweeps</span>
+        </div>
+        <div class="panel">
+          <span class="label">TALON</span>
+          <span class="value" id="stat-talon">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="turn-banner">Loading…</div>
+
+    <div class="zone" id="computer-zone">
+      <span class="zone-label">COMPUTER (<span id="cpu-count">0</span> cards, <span id="cpu-pile-count">0</span> captured)</span>
+      <div class="hand-row" id="computer-hand"></div>
+    </div>
+
+    <div id="table-zone">
+      <div id="table-cards"></div>
+    </div>
+
+    <div class="zone" id="player-zone">
+      <span class="zone-label">YOU (<span id="you-pile-count">0</span> captured)</span>
+      <div class="hand-row" id="player-hand"></div>
+    </div>
+
+    <div id="controls">
+      <button id="play-btn">Play</button>
+      <button id="new-game-btn">New Game</button>
+    </div>
+    <div id="message"></div>
+  </div>
+
+  <div id="overlay">
+    <div id="overlay-card">
+      <h2>Deal Over</h2>
+      <div id="overlay-result"></div>
+      <div id="overlay-details">
+        <div class="col" id="overlay-you"></div>
+        <div class="col" id="overlay-cpu"></div>
+      </div>
+      <button id="play-again-btn">Play Again</button>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ======================================================================
+  // Game engine — a direct port of the tested Python `casino` module
+  // (same rules, same edge cases: optional captures, the double-move after
+  // a sweep, new rounds dealt from the talon, and the last capturer taking
+  // whatever is left on the table at the very end of the deal).
+  // ======================================================================
+
+  const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+  const SUITS = ["S", "H", "D", "C"];
+  const RANK_VALUE = Object.fromEntries(RANKS.map((r, i) => [r, i + 1]));
+  const ALL_CARDS = SUITS.flatMap((s) => RANKS.map((r) => r + s));
+
+  function cardValue(card) {
+    return RANK_VALUE[card.slice(0, -1)];
+  }
+
+  function combinations(arr, size) {
+    const results = [];
+    (function helper(start, chosen) {
+      if (chosen.length === size) {
+        results.push(chosen.slice());
+        return;
+      }
+      for (let i = start; i < arr.length; i++) {
+        chosen.push(arr[i]);
+        helper(i + 1, chosen);
+        chosen.pop();
+      }
+    })(0, []);
+    return results;
+  }
+
+  // Every distinct combination of `cards` whose values sum to `target`,
+  // found via pruned backtracking (sorted ascending, stop once a single
+  // card already exceeds what's left) rather than brute-forcing every
+  // subset size — cheap regardless of how large the table grows, since the
+  // targets we ever search for are small hand-subset sums.
+  function subsetsWithSum(cards, target) {
+    const ordered = [...cards].sort((a, b) => cardValue(a) - cardValue(b));
+    const n = ordered.length;
+    const results = [];
+    (function backtrack(start, remaining, chosen) {
+      if (remaining === 0) {
+        results.push(chosen.slice());
+        return;
+      }
+      for (let i = start; i < n; i++) {
+        const v = cardValue(ordered[i]);
+        if (v > remaining) break;
+        chosen.push(ordered[i]);
+        backtrack(i + 1, remaining - v, chosen);
+        chosen.pop();
+      }
+    })(0, target, []);
+    return results;
+  }
+
+  function newDeal(deck, first) {
+    first = first || 0;
+    const hands = [null, null];
+    hands[first] = deck.slice(0, 3);
+    hands[1 - first] = deck.slice(3, 6);
+    return {
+      hands,
+      table: deck.slice(6, 10),
+      talon: deck.slice(10),
+      piles: [[], []],
+      sweeps: [0, 0],
+      player: first,
+      lastCapturer: null,
+      owedExtraMove: false,
+    };
+  }
+
+  // Placing any single held card is always legal, even when a capture is
+  // available (captures are optional, never forced). A capture is legal
+  // whenever some non-empty combination of played hand cards sums to the
+  // same value as some non-empty combination of table cards taken.
+  function legalMoves(state) {
+    const hand = state.hands[state.player];
+    const table = state.table;
+    const moves = hand.map((c) => ({ hand: [c], table: [] }));
+
+    const cache = new Map();
+    for (let size = 1; size <= hand.length; size++) {
+      for (const combo of combinations(hand, size)) {
+        const target = combo.reduce((s, c) => s + cardValue(c), 0);
+        if (!cache.has(target)) cache.set(target, subsetsWithSum(table, target));
+        for (const tableCards of cache.get(target)) {
+          moves.push({ hand: combo.slice(), table: tableCards.slice() });
+        }
+      }
+    }
+    return moves;
+  }
+
+  function playMove(state, move) {
+    const player = state.player;
+    const hand = state.hands[player];
+    const handSet = new Set(hand);
+    const moveHandSet = new Set(move.hand);
+    const moveTableSet = new Set(move.table);
+
+    if (moveHandSet.size === 0 || ![...moveHandSet].every((c) => handSet.has(c))) {
+      throw new Error("cannot play cards that are not in hand");
+    }
+
+    if (moveTableSet.size > 0) {
+      const tableSet = new Set(state.table);
+      if (![...moveTableSet].every((c) => tableSet.has(c))) {
+        throw new Error("cannot take cards that are not on the table");
+      }
+      const handSum = [...moveHandSet].reduce((s, c) => s + cardValue(c), 0);
+      const tableSum = [...moveTableSet].reduce((s, c) => s + cardValue(c), 0);
+      if (handSum !== tableSum) {
+        throw new Error("the cards taken must add up to the cards played");
+      }
+    } else if (moveHandSet.size !== 1) {
+      throw new Error("placing a card without capturing plays exactly one card");
+    }
+
+    const newHand = hand.filter((c) => !moveHandSet.has(c));
+    const hands = state.hands.slice();
+    hands[player] = newHand;
+
+    const piles = state.piles.slice();
+    const sweeps = state.sweeps.slice();
+    let lastCapturer = state.lastCapturer;
+
+    let newTable, causedSweep;
+    if (moveTableSet.size > 0) {
+      newTable = state.table.filter((c) => !moveTableSet.has(c));
+      piles[player] = piles[player].concat([...moveHandSet], [...moveTableSet]);
+      lastCapturer = player;
+      causedSweep = newTable.length === 0;
+      if (causedSweep) sweeps[player] += 1;
+    } else {
+      newTable = state.table.concat([...moveHandSet]);
+      causedSweep = false;
+    }
+
+    // A sweep clears the table, so the player right after the sweeper gets
+    // two moves in a row instead of one (they must rebuild the table
+    // alone). `owedExtraMove` marks that the player about to move still
+    // owes one; playing that move consumes it without passing the turn.
+    const flipTurn = !state.owedExtraMove;
+    let nextPlayer = flipTurn ? 1 - player : player;
+    let owedExtraMove = causedSweep;
+
+    let newTalon = state.talon;
+
+    if (hands[0].length === 0 && hands[1].length === 0) {
+      if (newTalon.length > 0) {
+        // Both hands ran out but cards remain: a new round is dealt.
+        // The last player to capture draws first and leads it.
+        const leader = lastCapturer !== null ? lastCapturer : player;
+        const other = 1 - leader;
+        hands[leader] = newTalon.slice(0, 3);
+        hands[other] = newTalon.slice(3, 6);
+        newTalon = newTalon.slice(6);
+        nextPlayer = leader;
+        owedExtraMove = false;
+      } else if (newTable.length > 0) {
+        // Nothing left in hand or talon: the deal is over. Whatever is
+        // still on the table goes to whoever captured last.
+        const taker = lastCapturer !== null ? lastCapturer : player;
+        piles[taker] = piles[taker].concat(newTable);
+        newTable = [];
+      }
+    }
+
+    // The compensation move above can empty one hand faster than the
+    // other. A player with no cards has no legal move at all, so play
+    // never hands control to them while their opponent can still act.
+    if (hands[nextPlayer].length === 0 && hands[1 - nextPlayer].length > 0) {
+      nextPlayer = 1 - nextPlayer;
+    }
+
+    return {
+      hands,
+      table: newTable,
+      talon: newTalon,
+      piles,
+      sweeps,
+      player: nextPlayer,
+      lastCapturer,
+      owedExtraMove,
+    };
+  }
+
+  function dealOver(state) {
+    return (
+      state.hands[0].length === 0 &&
+      state.hands[1].length === 0 &&
+      state.talon.length === 0 &&
+      state.table.length === 0
+    );
+  }
+
+  function computeScore(state) {
+    const points = [];
+    for (const p of [0, 1]) {
+      const pile = state.piles[p];
+      let total = 0;
+      if (pile.length >= 27) total += 3;
+      if (pile.filter((c) => c.endsWith("S")).length >= 7) total += 2;
+      total += pile.filter((c) => c.startsWith("A")).length;
+      if (pile.includes("10D")) total += 2;
+      if (pile.includes("2S")) total += 1;
+      total += state.sweeps[p];
+      points.push(total);
+    }
+    return points;
+  }
+
+  function shuffledDeck() {
+    const a = ALL_CARDS.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // ======================================================================
+  // Card visuals
+  // ======================================================================
+
+  const RANK_FILE = { A: "Ace", J: "Jack", Q: "Queen", K: "King" };
+  const SUIT_FILE = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" };
+  const SUIT_SYMBOL = { S: "♠", H: "♥", D: "♦", C: "♣" };
+
+  function cardImageUrl(card) {
+    const rank = card.slice(0, -1);
+    const suit = card.slice(-1);
+    const rankName = RANK_FILE[rank] || rank;
+    return `https://commons.wikimedia.org/wiki/Special:FilePath/${rankName}_of_${SUIT_FILE[suit]}.svg`;
+  }
+
+  function makeFallbackFace(card) {
+    const rank = card.slice(0, -1);
+    const suit = card.slice(-1);
+    const red = suit === "H" || suit === "D";
+    const symbol = SUIT_SYMBOL[suit];
+    const wrap = document.createElement("div");
+    wrap.className = "fallback-face " + (red ? "red" : "black");
+    wrap.innerHTML =
+      `<span class="corner tl">${rank}<br>${symbol}</span>` +
+      `<span class="pip">${symbol}</span>` +
+      `<span class="corner br">${rank}<br>${symbol}</span>`;
+    return wrap;
+  }
+
+  function makeCardEl(card, opts) {
+    opts = opts || {};
+    const el = document.createElement("div");
+    el.className = "card" + (opts.selected ? " selected" : "") + (opts.faceDown ? " face-down" : "");
+    el.dataset.card = card;
+
+    if (!opts.faceDown) {
+      const img = document.createElement("img");
+      img.src = cardImageUrl(card);
+      img.alt = card;
+      img.draggable = false;
+      img.onerror = function () {
+        img.remove();
+        el.appendChild(makeFallbackFace(card));
+      };
+      el.appendChild(img);
+    }
+
+    if (opts.onClick) {
+      el.classList.add("clickable");
+      el.addEventListener("click", opts.onClick);
+    }
+
+    return el;
+  }
+
+  // ======================================================================
+  // UI wiring
+  // ======================================================================
+
+  const PLAYER = 0;
+  const COMPUTER = 1;
+  const COMPUTER_DELAY_MS = 900;
+
+  let state = null;
+  let selectedHand = new Set();
+  let selectedTable = new Set();
+  let interactionLocked = false;
+
+  const el = {
+    youScore: document.getElementById("stat-you-score"),
+    cpuScore: document.getElementById("stat-cpu-score"),
+    youSweeps: document.getElementById("stat-you-sweeps"),
+    cpuSweeps: document.getElementById("stat-cpu-sweeps"),
+    talon: document.getElementById("stat-talon"),
+    turnBanner: document.getElementById("turn-banner"),
+    computerHand: document.getElementById("computer-hand"),
+    cpuCount: document.getElementById("cpu-count"),
+    cpuPileCount: document.getElementById("cpu-pile-count"),
+    youPileCount: document.getElementById("you-pile-count"),
+    tableCards: document.getElementById("table-cards"),
+    playerHand: document.getElementById("player-hand"),
+    playBtn: document.getElementById("play-btn"),
+    newGameBtn: document.getElementById("new-game-btn"),
+    message: document.getElementById("message"),
+    overlay: document.getElementById("overlay"),
+    overlayResult: document.getElementById("overlay-result"),
+    overlayYou: document.getElementById("overlay-you"),
+    overlayCpu: document.getElementById("overlay-cpu"),
+    playAgainBtn: document.getElementById("play-again-btn"),
+  };
+
+  function sumVal(cards) {
+    return cards.reduce((s, c) => s + cardValue(c), 0);
+  }
+
+  function setMessage(text, kind) {
+    el.message.textContent = text;
+    el.message.className = kind || "";
+  }
+
+  function toggleSelection(set, card) {
+    if (set.has(card)) set.delete(card);
+    else set.add(card);
+  }
+
+  function onHandCardClick(card) {
+    if (interactionLocked || state.player !== PLAYER) return;
+    toggleSelection(selectedHand, card);
+    render();
+  }
+
+  function onTableCardClick(card) {
+    if (interactionLocked || state.player !== PLAYER) return;
+    toggleSelection(selectedTable, card);
+    render();
+  }
+
+  function render() {
+    // status panels
+    const scores = computeScore(state);
+    el.youScore.textContent = String(scores[PLAYER]);
+    el.cpuScore.textContent = String(scores[COMPUTER]);
+    el.youSweeps.textContent = String(state.sweeps[PLAYER]);
+    el.cpuSweeps.textContent = String(state.sweeps[COMPUTER]);
+    el.talon.textContent = String(state.talon.length);
+    el.cpuCount.textContent = String(state.hands[COMPUTER].length);
+    el.cpuPileCount.textContent = String(state.piles[COMPUTER].length);
+    el.youPileCount.textContent = String(state.piles[PLAYER].length);
+
+    // turn banner
+    if (interactionLocked && state.player === COMPUTER) {
+      el.turnBanner.textContent = "Computer is thinking…";
+      el.turnBanner.className = "cpu-turn";
+    } else if (state.player === PLAYER) {
+      el.turnBanner.textContent = "Your turn";
+      el.turnBanner.className = "you-turn";
+    } else {
+      el.turnBanner.textContent = "Computer's turn";
+      el.turnBanner.className = "cpu-turn";
+    }
+
+    // computer hand (face down)
+    el.computerHand.innerHTML = "";
+    for (let i = 0; i < state.hands[COMPUTER].length; i++) {
+      el.computerHand.appendChild(makeCardEl("back" + i, { faceDown: true }));
+    }
+
+    // table
+    el.tableCards.innerHTML = "";
+    if (state.table.length === 0) {
+      const hint = document.createElement("div");
+      hint.id = "table-empty-hint";
+      hint.textContent = "table is empty";
+      el.tableCards.appendChild(hint);
+    } else {
+      for (const card of state.table) {
+        const canClick = !interactionLocked && state.player === PLAYER;
+        el.tableCards.appendChild(
+          makeCardEl(card, {
+            selected: selectedTable.has(card),
+            onClick: canClick ? () => onTableCardClick(card) : null,
+          })
+        );
+      }
+    }
+
+    // player hand
+    el.playerHand.innerHTML = "";
+    for (const card of state.hands[PLAYER]) {
+      const canClick = !interactionLocked && state.player === PLAYER;
+      el.playerHand.appendChild(
+        makeCardEl(card, {
+          selected: selectedHand.has(card),
+          onClick: canClick ? () => onHandCardClick(card) : null,
+        })
+      );
+    }
+
+    el.playBtn.disabled = interactionLocked || state.player !== PLAYER;
+  }
+
+  function afterMove() {
+    selectedHand.clear();
+    selectedTable.clear();
+
+    if (dealOver(state)) {
+      render();
+      showGameOver();
+      return;
+    }
+
+    if (state.player === COMPUTER) {
+      interactionLocked = true;
+      setMessage("Computer is thinking…");
+      render();
+      setTimeout(computerTurn, COMPUTER_DELAY_MS);
+    } else {
+      interactionLocked = false;
+      setMessage("Select cards from your hand and table, then click Play.");
+      render();
+    }
+  }
+
+  function computerTurn() {
+    const moves = legalMoves(state);
+    const captures = moves.filter((m) => m.table.length > 0);
+    let move;
+    if (captures.length > 0) {
+      captures.sort(
+        (a, b) => b.table.length - a.table.length || sumVal(b.hand) - sumVal(a.hand)
+      );
+      move = captures[0];
+    } else {
+      const placements = moves.filter((m) => m.table.length === 0);
+      move = placements[Math.floor(Math.random() * placements.length)];
+    }
+
+    state = playMove(state, move);
+    afterMove();
+  }
+
+  el.playBtn.addEventListener("click", function () {
+    if (state.player !== PLAYER || interactionLocked) return;
+
+    const handSel = [...selectedHand];
+    const tableSel = [...selectedTable];
+
+    if (handSel.length === 0) {
+      setMessage("Select a card from your hand first.", "error");
+      return;
+    }
+    if (tableSel.length === 0 && handSel.length !== 1) {
+      setMessage(
+        "Placing puts down exactly one card. Select table cards too if you want to capture.",
+        "error"
+      );
+      return;
+    }
+    if (tableSel.length > 0) {
+      const hs = sumVal(handSel);
+      const ts = sumVal(tableSel);
+      if (hs !== ts) {
+        setMessage(
+          `Those cards don't add up: your selection totals ${hs}, the table selection totals ${ts}.`,
+          "error"
+        );
+        return;
+      }
+    }
+
+    try {
+      const captured = tableSel.length > 0;
+      state = playMove(state, { hand: handSel, table: tableSel });
+      setMessage(captured ? "Captured!" : "Card placed.", "good");
+    } catch (e) {
+      setMessage(e.message, "error");
+      return;
+    }
+
+    afterMove();
+  });
+
+  function showGameOver() {
+    const scores = computeScore(state);
+    el.overlayResult.textContent =
+      scores[PLAYER] > scores[COMPUTER]
+        ? "You win!"
+        : scores[PLAYER] < scores[COMPUTER]
+        ? "Computer wins."
+        : "It's a tie.";
+    el.overlayYou.innerHTML =
+      `<b>You</b><br>Score: ${scores[PLAYER]}<br>Sweeps: ${state.sweeps[PLAYER]}` +
+      `<br>Cards captured: ${state.piles[PLAYER].length}`;
+    el.overlayCpu.innerHTML =
+      `<b>Computer</b><br>Score: ${scores[COMPUTER]}<br>Sweeps: ${state.sweeps[COMPUTER]}` +
+      `<br>Cards captured: ${state.piles[COMPUTER].length}`;
+    el.overlay.classList.add("visible");
+  }
+
+  function newGame() {
+    state = newDeal(shuffledDeck(), PLAYER);
+    selectedHand.clear();
+    selectedTable.clear();
+    interactionLocked = false;
+    el.overlay.classList.remove("visible");
+    setMessage("Select cards from your hand and table, then click Play.");
+    render();
+  }
+
+  el.newGameBtn.addEventListener("click", newGame);
+  el.playAgainBtn.addEventListener("click", newGame);
+
+  newGame();
+})();
+</script>
+</body>
+</html>
