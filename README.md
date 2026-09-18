@@ -136,9 +136,25 @@ All 14 tests pass.
 
 ## How to Launch the Browser Game
 
-Open `index.html` directly in a modern browser (double-click it, or drag
-it into a browser window). No server, database, build step, or install
-is required.
+From the project root, run:
+
+```sh
+python -m webbrowser index.html
+```
+
+That's it — no server, database, build step, or install required (you
+can also just double-click `index.html`, or drag it into a browser
+window).
+
+### How to Play
+
+You're dealt 3 cards; 4 more sit face up on the table. On your turn,
+click a card in your hand, then either click Play to place it on the
+table, or also click one or more table cards that add up to the same
+value and click Play to capture them (plus a matching combination of
+your own hand cards, if you like). Capture everything on the table for a
+sweep. Keep playing through new rounds until the deck runs out, then
+compare final scores against the computer.
 
 ## Project Structure
 
